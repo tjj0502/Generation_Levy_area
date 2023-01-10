@@ -1,0 +1,43 @@
+seed: 3407
+wandb_api: "a0a43a4b820d0a581e3579b07d15bd9881f4b559"
+train: True
+pretrained: True
+key: 0
+
+# Data
+path_dim: 2
+n_lags: 100
+logsig_level: 2
+T: 1.
+exp_dir: "./result/brownian" # For loading
+
+# Model
+algo: "logsig"
+dataset: "brownian"
+gpu_id: "0"
+device: cuda
+
+# Generator
+generator: "brownian"
+G_input_dim: 32
+G_hidden_dim: 32
+
+# Discriminator
+discriminator: "characteristic"
+D_batch_size: 100
+
+# Trainer
+train_batch_size: 512
+lr_G: 0.001
+lr_D: 0.001
+train_num_steps: 3000
+save_model: True
+save_every: 100
+loss_track_every: 100
+D_steps_per_G_step: 3
+G_steps_per_D_step: 5
+results_folder: "./result/brownian" # For saving
+
+
+# Tuning
+method: grid
