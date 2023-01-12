@@ -45,7 +45,7 @@ class Characteristic_Discriminator(nn.Module):
         # self.register_buffer(name='grid', tensor=grid)
 
     def forward(self, fake_characteristic, real_characteristic, t = 0.1):
-        
+        # Randomly generate coefficients for characteristic function
         coefficients = torch.pow(torch.exp(self.logvar), 0.5) * torch.randn([self.batch_size, self.logsig_length]).to(self.logvar.device)
         # coefficients = self.grid
         

@@ -27,7 +27,7 @@ class Levy_GAN_trainer(Base_trainer):
                                          save_model=config.save_model,
                                          save_every=config.save_every,
                                          loss_track_every=config.loss_track_every,
-                                         results_folder=config.results_folder)
+                                         results_folder=config.experiment_directory)
 
         
         self.D = D

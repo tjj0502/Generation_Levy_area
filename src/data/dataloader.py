@@ -63,12 +63,3 @@ def get_dataset(
     #     config.input_dim = training_loader.dataset[0][0].shape[-1]
     return training_loader, test_loader
 
-
-if __name__ == '__main__':
-    from src.datasets.dataloader import get_dataset
-    import yaml
-    import ml_collections
-    config_dir = 'configs/' + 'train_gan.yaml'
-    with open(config_dir) as file:
-        config = ml_collections.ConfigDict(yaml.safe_load(file))
-    train_dl, test_dl = get_dataset(config=config)

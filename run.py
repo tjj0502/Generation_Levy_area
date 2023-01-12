@@ -6,19 +6,23 @@ import copy
 import wandb
 import yaml
 import os
+from os import path as pt
 
 from src.evaluation.evaluations import full_evaluation
+from src.utils import set_seed
 import torch
 # from src.utils import get_experiment_dir, save_obj
 # import argparse
 
 
-def main(config):
-    os.environ["CUDA_VISIBLE_DEVICES"] = config.gpu_id
-    print(os.environ["CUDA_VISIBLE_DEVICES"])
-    # Set the seed
-    torch.manual_seed(config.seed)
-    # np.random.seed(config.seed)
+def run(algo_id, config, base_dir, dataset):
+    print('Executing: %s, %s' % (algo_id, dataset))
+    experiment_directory = pt.join(base_dir, dataset, 'path_dim={}'.format(config.path_dim), 'seed={}'.format(config.seed), algo_id)
+
+    print(experiment_directory)
+    config.update(
+        {"experiment_directory": experiment_directory}, allow_val_change=True)
+
 
     # initialize weight and bias
     # Place here your API key.
@@ -42,15 +46,8 @@ def main(config):
         # job_type=config.function,
     )
     config = wandb.config
-    print(config)
-    if (config.device ==
-            "cuda" and torch.cuda.is_available()):
-        config.update({"device": "cuda:0"}, allow_val_change=True)
-    else:
-        config.update({"device": "cpu"}, allow_val_change=True)
     # torch.cuda.set_per_process_memory_fraction(0.5, 0)get_dataset
-    from src.train.trainer import get_trainer
-    trainer = get_trainer(config)
+
 
     # Define transforms and create dataloaders
 
@@ -64,6 +61,13 @@ def main(config):
 
     # Train the model
     if config.train:
+        if not pt.exists(experiment_directory):
+            # if the experiment directory does not exist we create the directory
+            os.makedirs(experiment_directory)
+
+        from src.train.trainer import get_trainer
+        trainer = get_trainer(config)
+
         # Print arguments (Sanity check)
         print(config)
         # Train the model
@@ -74,7 +78,7 @@ def main(config):
 
     elif config.pretrained:
         pass
-    
+
     from src.data.dataloader import get_dataset
     train_dl, test_dl = get_dataset(config, num_workers=4)
     from src.model.generator.logsig_generator import Base_Logsig_Generator
@@ -83,13 +87,13 @@ def main(config):
                                              path_dim=config.path_dim,
                                              logsig_level=config.logsig_level,
                                              device=config.device).to(config.device)
-    
+
     generator.load_state_dict(torch.load(config.results_folder + '/generator-model-final.pt')['best_generator'])
-    
+
     generator.eval()
-    
+
     full_evaluation(generator, train_dl, test_dl, config)
-    
+
     run.finish()
 
 #     plot_summary(fake_test_dl, test_dl, config)
@@ -97,23 +101,43 @@ def main(config):
 #     wandb.save(pt.join(config.exp_dir, '*pt*'))
 #     wandb.save(pt.join(config.exp_dir, '*pdf*'))
 
+def main(config):
+    '''
+    Main function, setup of the experiment.
+    '''
+    if not pt.exists('./data'):
+        os.mkdir('./data')
+    print('Start of training. CUDA: %s' % config.use_cuda)
+    for dataset in config.datasets:
+        for algo_id in config.algo:
+            for seed in range(config.initial_seed, config.initial_seed + config.num_seeds):
+                # Set seed for exact reproducibility of the experiments
+                set_seed(seed)
+                config.update({"seed": seed}, allow_val_change=True)
+                run(
+                    algo_id=algo_id,
+                    config=config,
+                    dataset=dataset,
+                    base_dir=config.base_dir,
+                )
+
+
 
 if __name__ == '__main__':
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument('--algo', type=str, default='LSTM_DEV',
-#                         help='choose from TimeGAN,RCGAN,TimeVAE')
-#     parser.add_argument('--dataset', type=str, default='AR1',
-#                         help='choose from AR1, ROUGH, GBM')
-#     args = parser.parse_args()
-#     if args.algo == 'TimeVAE':
-#         config_dir = 'configs/' + 'train_vae.yaml'
-
-#     else:
-#         config_dir = 'configs/' + 'train_gan.yaml'
-        
     config_dir = 'configs/' + 'train_brownian.yaml'
     with open(config_dir) as file:
         config = ml_collections.ConfigDict(yaml.safe_load(file))
+
+    # Cuda setup
+    os.environ["CUDA_VISIBLE_DEVICES"] = config.gpu_id
+    print(os.environ["CUDA_VISIBLE_DEVICES"])
+
+    if (config.use_cuda and torch.cuda.is_available()):
+        print("Number of GPUs available: ", torch.cuda.device_count())
+        config.update({"device": "cuda"}, allow_val_change=True)
+    else:
+        config.update({"device": "cpu"}, allow_val_change=True)
+
     # config.dataset = args.dataset
     key = int(torch.randint(1000,[1]))
     config.update({"key": key}, allow_val_change=True)
