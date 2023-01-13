@@ -81,8 +81,8 @@ def run(algo_id, config, base_dir, dataset):
 
     from src.data.dataloader import get_dataset
     train_dl, test_dl = get_dataset(config, dataset_name=dataset, num_workers=4)
-    from src.model.generator.logsig_generator import Base_Logsig_Generator
-    generator = Base_Logsig_Generator(input_dim=config.G_input_dim,
+    from src.model.generator.logsig_generator import Conditional_Logsig_Generator
+    generator = Conditional_Logsig_Generator(input_dim=config.G_input_dim,
                                              hidden_dim=config.G_hidden_dim,
                                              path_dim=config.path_dim,
                                              logsig_level=config.logsig_level,
@@ -109,6 +109,7 @@ def main(config):
         os.mkdir('./data')
     print('Start of training. CUDA: %s' % config.use_cuda)
     for dataset in config.datasets:
+        config.update({"dataset": dataset}, allow_val_change=True)
         for algo_id in config.algo:
             for seed in range(config.initial_seed, config.initial_seed + config.num_seeds):
                 # Set seed for exact reproducibility of the experiments

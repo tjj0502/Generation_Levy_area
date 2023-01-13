@@ -84,15 +84,19 @@ class Levy_GAN_trainer(Base_trainer):
     
     
     def step_fit(self, real_characteristic):
-        # Generate fake data for discriminator training
-        # with torch.no_grad():
-        
-        
-        # bm_fake, levy_fake = x_fake[:,:self.dim], x_fake[:,self.dim:]
-        # print(bm_fake.shape,levy_fake.shape)
+        '''
+        At each iteration, we first train the discriminator once and then train the generation multiple times
+        Args:
+            real_characteristic: function, characteristic function via analytical formula
+        Return:
+            D_loss: torch.tensor, discriminator loss
+            G_loss: torch.tensor, generator loss
+        '''
         with torch.no_grad():
+            # Generate fake data for discriminator training
             noise = torch.randn([self.batch_size, self.G.input_dim]).to(self.G.device)
-            x_fake = self.G(noise)
+            BM = torch.sqrt(self.T) * torch.randn([self.batch_size, self.G.input_dim]).to(self.G.device)
+            x_fake = self.G(BM, noise)
             fake_characteristic = get_fake_characteristic(x_fake)
         D_loss = self.D_trainstep(fake_characteristic, real_characteristic)
         if self.step != 0 and self.step % self.loss_track_every == 0:
@@ -110,7 +114,8 @@ class Levy_GAN_trainer(Base_trainer):
         toggle_grad(self.G, True)
         self.G.train()
         noise = torch.randn([self.batch_size, self.G.input_dim]).to(self.G.device)
-        x_fake = self.G(noise)
+        BM = torch.sqrt(self.T) * torch.randn([self.batch_size, self.G.input_dim]).to(self.G.device)
+        x_fake = self.G(BM, noise)
         fake_characteristic = get_fake_characteristic(x_fake)
         coefficients = torch.pow(torch.exp(self.D.logvar), 0.5) * torch.randn([self.D.batch_size, self.D.logsig_length]).to(self.G.device)
         char_fake = fake_characteristic(coefficients, self.T)
@@ -137,7 +142,7 @@ class Levy_GAN_trainer(Base_trainer):
         if self.step != 0 and self.step % self.loss_track_every == 0:
             with torch.no_grad():
                 self.G.eval()
-                train_dl, test_dl = get_dataset(self.config, num_workers=4)
+                train_dl, test_dl = get_dataset(self.config, dataset_name=self.config.dataset, num_workers=4)
                 real_data = torch.cat([loader_to_tensor(train_dl), loader_to_tensor(test_dl)])
                 fake_data = loader_to_tensor(fake_loader(self.G, num_samples=10000, batch_size=128, config=self.config))
                 hist_loss = HistoLoss(real_data.unsqueeze(1), n_bins=50, name='marginal_distribution')(fake_data.unsqueeze(1))

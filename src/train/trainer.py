@@ -1,9 +1,9 @@
 from src.train.levy import Levy_GAN_trainer
-from src.model.generator.logsig_generator import Base_Logsig_Generator
+from src.model.generator.logsig_generator import Conditional_Logsig_Generator
 from src.model.discriminator.characteristic_discriminator import Characteristic_Discriminator
 import torch
 
-GENERATORS = {'brownian': Base_Logsig_Generator
+GENERATORS = {'brownian': Conditional_Logsig_Generator
               }
 
 DISCRIMINATOR = {'characteristic': Characteristic_Discriminator
