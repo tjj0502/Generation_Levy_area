@@ -29,8 +29,8 @@ def run(algo_id, config, base_dir, dataset):
     # setup own api key in the config
     os.environ["WANDB_API_KEY"] = config.wandb_api
     tags = [
-        config.algo,
-        config.dataset,
+        algo_id,
+        dataset,
     ]
 
     run = wandb.init(
@@ -39,7 +39,7 @@ def run(algo_id, config, base_dir, dataset):
         entity="jiajie0502",
         name="{}_lr={}".format(config.algo, config.lr_G),
         tags=tags,
-        group=config.dataset,
+        group=dataset,
         # name=config.algo,
         reinit=True
         # save_code=True,
@@ -66,7 +66,7 @@ def run(algo_id, config, base_dir, dataset):
             os.makedirs(experiment_directory)
 
         from src.train.trainer import get_trainer
-        trainer = get_trainer(config)
+        trainer = get_trainer(config, dataset)
 
         # Print arguments (Sanity check)
         print(config)
@@ -80,7 +80,7 @@ def run(algo_id, config, base_dir, dataset):
         pass
 
     from src.data.dataloader import get_dataset
-    train_dl, test_dl = get_dataset(config, num_workers=4)
+    train_dl, test_dl = get_dataset(config, dataset_name=dataset, num_workers=4)
     from src.model.generator.logsig_generator import Base_Logsig_Generator
     generator = Base_Logsig_Generator(input_dim=config.G_input_dim,
                                              hidden_dim=config.G_hidden_dim,
@@ -88,7 +88,7 @@ def run(algo_id, config, base_dir, dataset):
                                              logsig_level=config.logsig_level,
                                              device=config.device).to(config.device)
 
-    generator.load_state_dict(torch.load(config.results_folder + '/generator-model-final.pt')['best_generator'])
+    generator.load_state_dict(torch.load(config.experiment_directory + '/generator-model-final.pt')['best_generator'])
 
     generator.eval()
 

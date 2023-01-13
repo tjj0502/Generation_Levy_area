@@ -7,8 +7,8 @@ from src.data.BM import BM
 
 def get_dataset(
     config: ml_collections.ConfigDict,
-    num_workers: int = 4,
-    data_root="./data",
+    dataset_name: str,
+    num_workers: int = 4
 ) -> Tuple[dict, torch.utils.data.DataLoader]:
     """
     Create datasets loaders for the chosen datasets
@@ -16,9 +16,9 @@ def get_dataset(
     """
     dataset = {
         "brownian": BM
-    }[config.dataset]
+    }[dataset_name]
     
-    if config.dataset == "brownian":
+    if dataset_name == "brownian":
         training_set = dataset(
         partition="train",
         n_lags=config.n_lags,

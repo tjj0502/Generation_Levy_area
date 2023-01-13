@@ -304,14 +304,14 @@ def plot_samples(real_dl, fake_dl, config):
     x_real_dim = real_X.shape[-1]
     for i in range(x_real_dim):
         plt.plot(to_numpy(fake_X[:250, :, i]).T, 'C%s' % i, alpha=0.1)
-    plt.savefig(pt.join(config.exp_dir, 'x_fake.png'))
+    plt.savefig(pt.join(config.experiment_directory, 'x_fake.png'))
     plt.close()
 
     for i in range(x_real_dim):
         random_indices = torch.randint(0, real_X.shape[0], (250,))
         plt.plot(
             to_numpy(real_X[random_indices, :, i]).T, 'C%s' % i, alpha=0.1)
-    plt.savefig(pt.join(config.exp_dir, 'x_real.png'))
+    plt.savefig(pt.join(config.experiment_directory, 'x_real.png'))
     plt.close()
 
 
@@ -324,7 +324,7 @@ def plot_samples1(real_dl, fake_dl, config):
         plt.plot(to_numpy(fake_X[:100, :, i]).T, 'C%s' % i, alpha=0.1)
         plt.plot(
             to_numpy(real_X[random_indices, :, i]).T, 'C%s' % i, alpha=0.1)
-        plt.savefig(pt.join(config.exp_dir, 'sample_plot{}.png'.format(i)))
+        plt.savefig(pt.join(config.experiment_directory, 'sample_plot{}.png'.format(i)))
         plt.close()
 
 
@@ -436,7 +436,7 @@ def histogram_plot(x_real, x_fake, config, grid_number = None, starting_point = 
     # fig.show()
     if save_fig:
 #         fig.savefig(result_folder + '/histogram_{}.png'.format(starting_point))
-        fig.savefig(config.results_folder + '/marginal_comparison.png')
+        fig.savefig(config.experiment_directory + '/marginal_comparison.png')
     return 
 
 
@@ -461,14 +461,14 @@ def plot_summary(fake_dl, real_dl, config, max_lag=None):
             x_fake_i), ax=axes[i, 1], log=True)
         # compare_acf(x_real=x_real_i, x_fake=x_fake_i,
         #           ax=axes[i, 2], max_lag=max_lag, CI=False, dim=(0, 1))
-    plt.savefig(pt.join(config.exp_dir, 'comparison.png'))
+    plt.savefig(pt.join(config.experiment_directory, 'comparison.png'))
     plt.close()
 
     for i in range(x_real.shape[2]):
         fig = plot_hists_marginals(
             x_real=x_real[..., i:i+1], x_fake=x_fake[..., i:i+1])
         fig.savefig(
-            pt.join(config.exp_dir, 'hists_marginals_dim{}.pdf'.format(i)))
+            pt.join(config.experiment_directory, 'hists_marginals_dim{}.pdf'.format(i)))
         plt.close()
     plot_samples(real_dl, fake_dl, config)
 
@@ -583,7 +583,7 @@ def visualization(real_dl, fake_dl, config):
     plt.title('t-SNE plot')
     plt.xlabel('x-tsne')
     plt.ylabel('y_tsne')
-    plt.savefig(pt.join(config.exp_dir, 't-SNE.png'))
+    plt.savefig(pt.join(config.experiment_directory, 't-SNE.png'))
     plt.close()
 
 

@@ -10,8 +10,8 @@ DISCRIMINATOR = {'characteristic': Characteristic_Discriminator
                  }
 
 
-def get_trainer(config):
-    model_name = config.dataset
+def get_trainer(config, dataset):
+    model_name = dataset
 
     generator = GENERATORS[config.generator](input_dim=config.G_input_dim,
                                              hidden_dim=config.G_hidden_dim,

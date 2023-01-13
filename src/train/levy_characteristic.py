@@ -130,9 +130,8 @@ def get_real_characteristic():
         U, evals = block_diagonal_decomposition(A)
         evals_img = evals.imag[:,::2]
 
-        d_0 = (evals.imag[:, ::2] == 0.).sum().item()
-        d_1 = int((bm_dim - d_0)//2)
-
+        d_0 = (evals.imag[:, ::2] == 0.).sum()
+        d_1 = int(((bm_dim - d_0)/2).item())
         # Coefficient calculation
         cosh_coeff = 1/torch.cosh(0.5*t*evals_img)
         z = torch.pow((U@bm_coeff.to(dtype = U.dtype).unsqueeze(-1)).reshape(batch_size, -1), 2)

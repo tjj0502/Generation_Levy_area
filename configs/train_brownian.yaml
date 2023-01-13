@@ -1,8 +1,10 @@
-seed: 3407
 wandb_api: "a0a43a4b820d0a581e3579b07d15bd9881f4b559"
 train: True
 pretrained: True
 key: 0
+num_seeds: 1
+initial_seed: 3407
+base_dir: "./numerical_results" # Directory where the experiment result is stored
 
 # Data
 path_dim: 2
@@ -12,10 +14,11 @@ T: 1.
 data_dir: "./data/brownian" # For loading
 
 # Model
-algo: "logsig"
-dataset: "brownian"
+algo: ["logsig_generator"]
+datasets: ["brownian"]
 gpu_id: "0"
-device: cuda
+device: "cuda"
+use_cuda: True
 
 # Generator
 generator: "brownian"
@@ -30,14 +33,14 @@ D_batch_size: 100
 train_batch_size: 512
 lr_G: 0.001
 lr_D: 0.001
-train_num_steps: 3000
+train_num_steps: 30
 save_model: True
 save_every: 100
 loss_track_every: 100
 D_steps_per_G_step: 3
 G_steps_per_D_step: 5
-results_folder: "./result/brownian" # For saving
+# results_folder: "./result/brownian" # For saving
 
 
 # Tuning
-method: grid
+method: "grid"
