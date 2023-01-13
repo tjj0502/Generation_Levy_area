@@ -128,19 +128,27 @@ def get_real_characteristic():
         # Create and decompose the matrix
         A = sum_A(bm_dim, levy_coeff)
         U, evals = block_diagonal_decomposition(A)
+        # print('evals', evals)
         evals_img = evals.imag[:,::2]
-
-        d_0 = (evals.imag[:, ::2] == 0.).sum()
-        d_1 = int(((bm_dim - d_0)/2).item())
-        # Coefficient calculation
+        # print('evals_img', evals_img)
+        
+        loop_time = bm_dim // 2
         cosh_coeff = 1/torch.cosh(0.5*t*evals_img)
         z = torch.pow((U@bm_coeff.to(dtype = U.dtype).unsqueeze(-1)).reshape(batch_size, -1), 2)
-
+        tanh_coeff = torch.tanh( 0.5 *t *evals_img)/(evals_img)
+        # If the eigenvalue is zero, we use the independent fact of BMs and  0.5*t
+        tanh_coeff[torch.isnan(tanh_coeff)] =  0.5 *t
+        
         res = torch.ones([batch_size]).to(coefficients.device)
-        for i in range(d_1):
-            temp = cosh_coeff[:, i] * torch.exp(- (z[:, 2 * i] + z[:, 2 * i + 1]) * torch.tanh(0.5 * t * evals_img[:, i]) / evals_img[:, i])
+        for i in range(loop_time):
+            temp = cosh_coeff[:,i] * torch.exp(- (z[:,2*i] + z[:,2*i+1]) * tanh_coeff[:,i])
+            # print('cosh: ', cosh_coeff[:,i], 'tanh: ', tanh_coeff[:,i], 'z: ', z[:,2*i], z[:,2*i+1], 'bm_coeff: ', torch.pow(bm_coeff, 2)[:,2*i], torch.pow(bm_coeff, 2)[:,2*i+1])
             res *= temp
-        res *= torch.exp(-0.5 * d_0 * t)
+        if bm_dim%2:
+            # Odd case: we add an extra term
+            temp = torch.exp(-1*(z[:,-1]) * tanh_coeff[:,-1])
+            # print('correction term:', temp, res, 'cosh: ', cosh_coeff[:,-1], 'tanh: ', tanh_coeff[:,-1], 'z: ', z[-1], 'bm_coeff: ', torch.pow(bm_coeff, 2)[-1])
+            res *= temp
         return res
     return joint_characteristic_function
 
