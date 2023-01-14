@@ -2,6 +2,7 @@ import torch
 from tqdm.auto import tqdm
 import wandb
 import copy
+from scipy.stats import special_ortho_group
 from src.train.base import Base_trainer
 from src.train.levy_characteristic import get_real_characteristic, get_fake_characteristic
 from src.utils import toggle_grad
@@ -95,8 +96,12 @@ class Levy_GAN_trainer(Base_trainer):
         with torch.no_grad():
             # Generate fake data for discriminator training
             noise = torch.randn([self.batch_size, self.G.input_dim]).to(self.G.device)
-            BM = torch.sqrt(self.T) * torch.randn([self.batch_size, self.G.input_dim]).to(self.G.device)
-            x_fake = self.G(BM, noise)
+            BM_increment = torch.sqrt(self.T) * torch.randn([self.batch_size, self.G.input_dim]).to(self.G.device)
+            # To give the rotational invariance, we randomly simulate a rotational matrix under the Haar measure and apply it to the BM increment.
+            rotation_matrix = torch.from_numpy(special_ortho_group.rvs(3)).to(BM_increment.device)
+            BM_increment = rotation_matrix @ BM_increment
+
+            x_fake = self.G(BM_increment, noise)
             fake_characteristic = get_fake_characteristic(x_fake)
         D_loss = self.D_trainstep(fake_characteristic, real_characteristic)
         if self.step != 0 and self.step % self.loss_track_every == 0:
@@ -114,25 +119,16 @@ class Levy_GAN_trainer(Base_trainer):
         toggle_grad(self.G, True)
         self.G.train()
         noise = torch.randn([self.batch_size, self.G.input_dim]).to(self.G.device)
-        BM = torch.sqrt(self.T) * torch.randn([self.batch_size, self.G.input_dim]).to(self.G.device)
-        x_fake = self.G(BM, noise)
+        BM_increment = torch.sqrt(self.T) * torch.randn([self.batch_size, self.G.input_dim]).to(self.G.device)
+        x_fake = self.G(BM_increment, noise)
         fake_characteristic = get_fake_characteristic(x_fake)
         coefficients = torch.pow(torch.exp(self.D.logvar), 0.5) * torch.randn([self.D.batch_size, self.D.logsig_length]).to(self.G.device)
         char_fake = fake_characteristic(coefficients, self.T)
         char_real = real_characteristic(coefficients, self.G.path_dim, self.T)
-        # G_loss = torch.pow(char_fake - char_real, 2).sum() # TODO: change to X*X^+
+        # G_loss = torch.pow(char_fake - char_real, 2).sum()
         G_loss = 1/self.D.batch_size * ((char_fake - char_real).real**2 + (char_fake - char_real).imag**2).sum()
         # print(G_loss)
         G_loss.backward()
-
-        # if self.best_G_loss is None or (G_loss) < self.best_G_loss:
-        #     self.best_G_model = copy.deepcopy(self.G.state_dict())
-        #     self.best_G_loss = G_loss.clone()
-        #     self.best_G_step = self.step
-        #     print('updated: ', self.step, self.best_G_loss)
-
-        
-
         self.G_optimizer.step()
 
         if self.save_model and self.step != 0 and self.step % self.save_every == 0:
