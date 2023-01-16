@@ -2,6 +2,7 @@ import torch
 from tqdm.auto import tqdm
 import wandb
 import copy
+import math
 from scipy.stats import special_ortho_group
 from src.train.base import Base_trainer
 from src.train.levy_characteristic import get_real_characteristic, get_fake_characteristic
@@ -96,12 +97,12 @@ class Levy_GAN_trainer(Base_trainer):
         with torch.no_grad():
             # Generate fake data for discriminator training
             noise = torch.randn([self.batch_size, self.G.input_dim]).to(self.G.device)
-            BM_increment = torch.sqrt(self.T) * torch.randn([self.batch_size, self.G.input_dim]).to(self.G.device)
+            BM_increment = math.sqrt(self.T) * torch.randn([self.batch_size, self.G.path_dim, 1]).to(self.G.device)
             # To give the rotational invariance, we randomly simulate a rotational matrix under the Haar measure and apply it to the BM increment.
-            rotation_matrix = torch.from_numpy(special_ortho_group.rvs(3)).to(BM_increment.device)
-            BM_increment = rotation_matrix @ BM_increment
-
-            x_fake = self.G(BM_increment, noise)
+            # rotation_matrix = torch.from_numpy(special_ortho_group.rvs(self.G.path_dim)).to(device = BM_increment.device, dtype = torch.float)
+            # BM_increment = rotation_matrix @ BM_increment
+            
+            x_fake = self.G(BM_increment.squeeze(-1), noise)
             fake_characteristic = get_fake_characteristic(x_fake)
         D_loss = self.D_trainstep(fake_characteristic, real_characteristic)
         if self.step != 0 and self.step % self.loss_track_every == 0:
@@ -119,14 +120,18 @@ class Levy_GAN_trainer(Base_trainer):
         toggle_grad(self.G, True)
         self.G.train()
         noise = torch.randn([self.batch_size, self.G.input_dim]).to(self.G.device)
-        BM_increment = torch.sqrt(self.T) * torch.randn([self.batch_size, self.G.input_dim]).to(self.G.device)
-        x_fake = self.G(BM_increment, noise)
+        BM_increment = math.sqrt(self.T) * torch.randn([self.batch_size, self.G.path_dim, 1]).to(self.G.device)
+        # rotation_matrix = torch.from_numpy(special_ortho_group.rvs(self.G.path_dim)).to(device = BM_increment.device, dtype = torch.float)
+        # BM_increment = rotation_matrix @ BM_increment
+        x_fake = self.G(BM_increment.squeeze(-1), noise)
         fake_characteristic = get_fake_characteristic(x_fake)
-        coefficients = torch.pow(torch.exp(self.D.logvar), 0.5) * torch.randn([self.D.batch_size, self.D.logsig_length]).to(self.G.device)
+        coefficients = torch.pow(torch.exp(self.D.logvar), 0.5) * torch.randn([self.D.batch_size, self.D.logsig_length]).to(self.G.device) + 1e-5
         char_fake = fake_characteristic(coefficients, self.T)
         char_real = real_characteristic(coefficients, self.G.path_dim, self.T)
         # G_loss = torch.pow(char_fake - char_real, 2).sum()
         G_loss = 1/self.D.batch_size * ((char_fake - char_real).real**2 + (char_fake - char_real).imag**2).sum()
+        
+        
         # print(G_loss)
         G_loss.backward()
         self.G_optimizer.step()
@@ -137,27 +142,33 @@ class Levy_GAN_trainer(Base_trainer):
 
         if self.step != 0 and self.step % self.loss_track_every == 0:
             with torch.no_grad():
+                
                 self.G.eval()
                 train_dl, test_dl = get_dataset(self.config, dataset_name=self.config.dataset, num_workers=4)
                 real_data = torch.cat([loader_to_tensor(train_dl), loader_to_tensor(test_dl)])
                 fake_data = loader_to_tensor(fake_loader(self.G, num_samples=10000, batch_size=128, config=self.config))
                 hist_loss = HistoLoss(real_data.unsqueeze(1), n_bins=50, name='marginal_distribution')(fake_data.unsqueeze(1))
                 cov_loss = CovLoss(real_data.unsqueeze(1), name='covariance')(fake_data.unsqueeze(1))
-                G_loss = hist_loss + cov_loss
+                evaluation_loss = hist_loss + cov_loss
                 wandb.log({'hist_loss': hist_loss})
                 wandb.log({'cov_loss': cov_loss})
                 # print("hist_loss and cov_loss logged! ", self.step// self.loss_track_every)
             self.loss_tracker['hist_loss'] = hist_loss
             self.loss_tracker['cov_loss'] = cov_loss
             
-            if self.best_G_loss is None or (G_loss) < self.best_G_loss:
+            if self.best_G_loss is None or (evaluation_loss) < self.best_G_loss:
                 self.best_G_model = copy.deepcopy(self.G.state_dict())
-                self.best_G_loss = G_loss.clone()
+                self.best_G_loss = evaluation_loss.clone()
                 self.best_G_step = self.step
                 print('updated: ', self.step, hist_loss, cov_loss)
             
             self.loss_tracker['best_G_loss'].append(self.best_G_loss)
+            self.loss_tracker['evaluation_loss'].append(evaluation_loss)
             self.loss_tracker['G_loss'].append(G_loss)
+            
+            # Track other qualities for debugging
+            self.loss_tracker['logvar'].append(self.D.logvar.clone())
+            # wandb.log({'logvar': self.D.logvar})
         
         toggle_grad(self.G, False)
 
@@ -169,13 +180,16 @@ class Levy_GAN_trainer(Base_trainer):
         
         self.D.train()
         self.D_optimizer.zero_grad()
-        
         # On fake data
         # x_fake.requires_grad_()
-        D_loss = self.D(fake_characteristic, real_characteristic, self.T)
-        
+        D_loss, _ = self.D(fake_characteristic, real_characteristic, self.T)
         D_loss.backward()
         self.D_optimizer.step()
+        
+        if self.save_model and self.step != 0 and self.step % self.save_every == 0:
+            milestone = self.step // self.save_every
+            self.save_D(milestone)
+        
         toggle_grad(self.D, False)
         return D_loss
 

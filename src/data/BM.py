@@ -46,14 +46,14 @@ class BM(torch.utils.data.TensorDataset):
         n_lags = n_lags
 
         data_loc = pathlib.Path(
-            config.data_dir + '/processed_data_{}'.format(n_lags))
+            config.data_dir + '/processed_data_n_lag={}_dim={}_T={}'.format(n_lags, config.path_dim, config.T))
 
         if os.path.exists(data_loc):
             pass
         else:
             os.makedirs(data_loc)
 
-            x_real = get_BM_paths(n_lags=n_lags, T = config.T)
+            x_real = get_BM_paths(n_lags=n_lags, T = config.T, dim = config.path_dim)
             x_real = signatory.logsignature(x_real, config.logsig_level, mode='brackets')
             train_X, test_X = train_test_split(x_real, 0.8)
             save_data(

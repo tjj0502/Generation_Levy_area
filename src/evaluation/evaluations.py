@@ -249,7 +249,8 @@ def fake_loader(generator, num_samples, batch_size, config, **kwargs):
         recovery = kwargs['recovery']
     with torch.no_grad():
         noise = torch.randn([num_samples, generator.input_dim]).to(generator.device)
-        fake_data = generator(noise)
+        BM_increment = math.sqrt(config.T) * torch.randn([num_samples, generator.path_dim]).to(generator.device)
+        fake_data = generator(BM_increment, noise)
         tensor_x = torch.Tensor(fake_data.cpu())
     return DataLoader(TensorDataset(tensor_x), batch_size=batch_size)
 

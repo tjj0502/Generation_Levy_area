@@ -33,7 +33,7 @@ def block_diagonal_decomposition(skew_symmetric):
     batch_size, dim = skew_symmetric.shape[0], skew_symmetric.shape[1]
     threshold = 1e-5
     assert (torch.norm(skew_symmetric + torch.permute(skew_symmetric, [0, 2, 1])) < threshold), skew_symmetric
-    assert (torch.norm(skew_symmetric) > 1e-10), "A is zero matrix"
+    # assert (torch.norm(skew_symmetric) > 1e-10), "A is zero matrix"
     n = dim // 2
     evals, evecs = torch.linalg.eig(skew_symmetric)
 
@@ -135,20 +135,40 @@ def get_real_characteristic():
         loop_time = bm_dim // 2
         cosh_coeff = 1/torch.cosh(0.5*t*evals_img)
         z = torch.pow((U@bm_coeff.to(dtype = U.dtype).unsqueeze(-1)).reshape(batch_size, -1), 2)
-        tanh_coeff = torch.tanh( 0.5 *t *evals_img)/(evals_img)
-        # If the eigenvalue is zero, we use the independent fact of BMs and  0.5*t
-        tanh_coeff[torch.isnan(tanh_coeff)] =  0.5 *t
+#         tanh_coeff = torch.tanh( 0.5 *t *evals_img)/(evals_img)
+#         # If the eigenvalue is zero, we use the independent fact of BMs and  0.5*t
+#         if torch.isnan(tanh_coeff).sum():
+#             print(levy_coeff[:3])
+#             tanh_coeff[torch.isnan(tanh_coeff)] =  0.5 *t
         
+#         res = torch.ones([batch_size]).to(coefficients.device)
+#         for i in range(loop_time):
+#             temp = cosh_coeff[:,i] * torch.exp(- (z[:,2*i] + z[:,2*i+1]) * tanh_coeff[:,i])
+#             # print('cosh: ', cosh_coeff[:,i], 'tanh: ', tanh_coeff[:,i], 'z: ', z[:,2*i], z[:,2*i+1], 'bm_coeff: ', torch.pow(bm_coeff, 2)[:,2*i], torch.pow(bm_coeff, 2)[:,2*i+1])
+#             res *= temp
+#         if bm_dim%2:
+#             # Odd case: we add an extra term
+#             temp = torch.exp(-1*(z[:,-1]) * tanh_coeff[:,-1])
+#             # print('correction term:', temp, res, 'cosh: ', cosh_coeff[:,-1], 'tanh: ', tanh_coeff[:,-1], 'z: ', z[-1], 'bm_coeff: ', torch.pow(bm_coeff, 2)[-1])
+#             res *= temp
+            
+            
         res = torch.ones([batch_size]).to(coefficients.device)
         for i in range(loop_time):
-            temp = cosh_coeff[:,i] * torch.exp(- (z[:,2*i] + z[:,2*i+1]) * tanh_coeff[:,i])
-            # print('cosh: ', cosh_coeff[:,i], 'tanh: ', tanh_coeff[:,i], 'z: ', z[:,2*i], z[:,2*i+1], 'bm_coeff: ', torch.pow(bm_coeff, 2)[:,2*i], torch.pow(bm_coeff, 2)[:,2*i+1])
+            temp = torch.zeros([batch_size]).to(coefficients.device)
+            # Find the indices where the eigenvalue is not zero
+            index_set = evals_img[:, i] != 0.
+
+            temp[index_set] = cosh_coeff[index_set, i] * torch.exp(- (z[index_set, 2 * i] + z[index_set, 2 * i + 1]) * torch.tanh(0.5 * t * evals_img[index_set, i]) / evals_img[index_set, i])
+
+            temp[~index_set] = torch.exp(-0.5 * (z[~index_set, 2*i] +z[~index_set, 2*i + 1]) * t)
             res *= temp
+        # Add the extra independent characteristic
         if bm_dim%2:
             # Odd case: we add an extra term
-            temp = torch.exp(-1*(z[:,-1]) * tanh_coeff[:,-1])
+            temp = torch.exp(- 0.5 * (z[:,-1])  *t)
             # print('correction term:', temp, res, 'cosh: ', cosh_coeff[:,-1], 'tanh: ', tanh_coeff[:,-1], 'z: ', z[-1], 'bm_coeff: ', torch.pow(bm_coeff, 2)[-1])
-            res *= temp
+            res *= temp  
         return res
     return joint_characteristic_function
 

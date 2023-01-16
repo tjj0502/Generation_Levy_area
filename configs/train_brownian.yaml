@@ -7,10 +7,10 @@ initial_seed: 3407
 base_dir: "./numerical_results" # Directory where the experiment result is stored
 
 # Data
-path_dim: 2
+path_dim: 4
 n_lags: 100
 logsig_level: 2
-T: 1.
+T: 0.1
 data_dir: "./data/brownian" # For loading
 
 # Model
@@ -33,9 +33,9 @@ D_batch_size: 100
 train_batch_size: 512
 lr_G: 0.001
 lr_D: 0.001
-train_num_steps: 30
+train_num_steps: 10000
 save_model: True
-save_every: 100
+save_every: 1000
 loss_track_every: 100
 D_steps_per_G_step: 3
 G_steps_per_D_step: 5

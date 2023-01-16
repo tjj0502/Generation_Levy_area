@@ -75,7 +75,7 @@ class Conditional_Logsig_Generator(nn.Module):
         self.model = nn.Sequential(
             *self.block(self.input_dim + self.path_dim, self.hidden_dim, normalize=False, activation='sigmoid'),
             *self.block(self.hidden_dim, self.hidden_dim, activation='sigmoid'),
-            *self.block(self.hidden_dim, int(self.logsig_length[-1] - self.logsig_length[-2]), normalize=False, activation='none')
+            *self.block(self.hidden_dim, int(self.logsig_length[-1] - self.logsig_length[-2]), normalize=True, activation='none')
         )
 
         # self.model_1 = nn.Sequential(
@@ -101,7 +101,7 @@ class Conditional_Logsig_Generator(nn.Module):
 
     def forward(self, bm, z):
         # Generate logsignature of degree two
-        gen_logsig = self.model(bm, z)
+        gen_logsig = self.model(torch.cat([bm, z], -1))
         # gen_logsig_2 = self.model_1(z)
         gen_logsig = torch.cat([bm, gen_logsig], -1)
         return gen_logsig

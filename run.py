@@ -11,6 +11,7 @@ from os import path as pt
 from src.evaluation.evaluations import full_evaluation
 from src.utils import set_seed
 import torch
+import seaborn as sns
 # from src.utils import get_experiment_dir, save_obj
 # import argparse
 
@@ -125,6 +126,7 @@ def main(config):
 
 
 if __name__ == '__main__':
+    sns.set()
     config_dir = 'configs/' + 'train_brownian.yaml'
     with open(config_dir) as file:
         config = ml_collections.ConfigDict(yaml.safe_load(file))

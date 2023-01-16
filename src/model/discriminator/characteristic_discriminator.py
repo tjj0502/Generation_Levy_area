@@ -46,7 +46,7 @@ class Characteristic_Discriminator(nn.Module):
 
     def forward(self, fake_characteristic, real_characteristic, t = 0.1):
         # Randomly generate coefficients for characteristic function
-        coefficients = torch.pow(torch.exp(self.logvar), 0.5) * torch.randn([self.batch_size, self.logsig_length]).to(self.logvar.device)
+        coefficients = torch.pow(torch.exp(self.logvar), 0.5) * torch.randn([self.batch_size, self.logsig_length]).to(self.logvar.device) + 1e-5
         # coefficients = self.grid
         
         # self.coefficients = self.lowerbound + (self.upperbound-self.lowerbound)*torch.rand([self.batch_size, self.logsig_length]).to(self.coefficients.device)
@@ -55,7 +55,7 @@ class Characteristic_Discriminator(nn.Module):
         # D_loss = -torch.pow(char_fake - char_real, 2).sum() X * X^+
         # print('batch_size', self.batch_size, 'lambdas', (char_fake - char_real)[:3])
         D_loss = - 1/self.batch_size * ((char_fake - char_real).real**2 + (char_fake - char_real).imag**2).sum()
-        return D_loss
+        return D_loss, coefficients
     
 
 
