@@ -1,12 +1,14 @@
 from src.train.levy import Levy_GAN_trainer
 from src.model.generator.logsig_generator import Conditional_Logsig_Generator
-from src.model.discriminator.characteristic_discriminator import Characteristic_Discriminator
+from src.model.discriminator.characteristic_discriminator import Grid_Characteristic_Discriminator, Gaussian_Characteristic_Discriminator, Embedded_Characteristic_Discriminator
 import torch
 
 GENERATORS = {'brownian': Conditional_Logsig_Generator
               }
 
-DISCRIMINATOR = {'characteristic': Characteristic_Discriminator
+DISCRIMINATOR = {'grid_characteristic': Grid_Characteristic_Discriminator,
+                 'gaussian_characteristic': Gaussian_Characteristic_Discriminator,
+                 'embedded_characteristic': Embedded_Characteristic_Discriminator
                  }
 
 
@@ -21,8 +23,13 @@ def get_trainer(config, dataset):
     G_optimizer=torch.optim.Adam(
                 generator.parameters(), lr=config.lr_G, betas=(0, 0.9))
     
-    discriminator = DISCRIMINATOR[config.discriminator](batch_size = config.D_batch_size,
-                                                        path_dim = config.path_dim)
+    if config.discriminator == 'embedded_characteristic':
+        discriminator = DISCRIMINATOR[config.discriminator](batch_size = config.D_batch_size,
+                                                            hidden_dim = config.G_hidden_dim,
+                                                            path_dim = config.path_dim)
+    else:
+        discriminator = DISCRIMINATOR[config.discriminator](batch_size = config.D_batch_size,
+                                                            path_dim = config.path_dim)
     
     D_optimizer=torch.optim.Adam(
                 discriminator.parameters(), lr=config.lr_D, betas=(0, 0.9))

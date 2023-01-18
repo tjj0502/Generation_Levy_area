@@ -125,7 +125,8 @@ class Levy_GAN_trainer(Base_trainer):
         # BM_increment = rotation_matrix @ BM_increment
         x_fake = self.G(BM_increment.squeeze(-1), noise)
         fake_characteristic = get_fake_characteristic(x_fake)
-        coefficients = torch.pow(torch.exp(self.D.logvar), 0.5) * torch.randn([self.D.batch_size, self.D.logsig_length]).to(self.G.device) + 1e-5
+        coefficients = self.D.mean + torch.pow(torch.exp(self.D.logvar), 0.5) * torch.randn([self.D.batch_size, self.D.logsig_length]).to(self.G.device) + 1e-5
+        # coefficients = self.D.model(coefficients)
         char_fake = fake_characteristic(coefficients, self.T)
         char_real = real_characteristic(coefficients, self.G.path_dim, self.T)
         # G_loss = torch.pow(char_fake - char_real, 2).sum()

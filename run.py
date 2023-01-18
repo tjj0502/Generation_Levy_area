@@ -18,7 +18,7 @@ import seaborn as sns
 
 def run(algo_id, config, base_dir, dataset):
     print('Executing: %s, %s' % (algo_id, dataset))
-    experiment_directory = pt.join(base_dir, dataset, 'path_dim={}'.format(config.path_dim), 'seed={}'.format(config.seed), algo_id)
+    experiment_directory = pt.join(base_dir, dataset, 'path_dim={}_lr_g={}_{}'.format(config.path_dim, config.lr_G, config.discriminator), 'seed={}'.format(config.seed), algo_id)
 
     print(experiment_directory)
     config.update(
