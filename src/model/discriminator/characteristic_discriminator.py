@@ -13,6 +13,8 @@ class Characteristic_Discriminator(nn.Module):
         self.path_dim = path_dim
         self.logsig_length = signatory.logsignature_channels(self.path_dim, logsig_level)
 
+    def sample_coefficients(self):
+        raise NotImplementedError
 
     def forward(self, fake_characteristic, real_characteristic, t=0.1):
         raise NotImplementedError
@@ -27,12 +29,15 @@ class Grid_Characteristic_Discriminator(Characteristic_Discriminator):
         self.coefficients = nn.Parameter(torch.empty(self.batch_size, self.logsig_length))
         nn.init.kaiming_normal_(self.coefficients)
 
+    def sample_coefficients(self):
+        return self.coefficients
 
     def forward(self, fake_characteristic, real_characteristic, t=0.1):
-        char_fake = fake_characteristic(self.coefficients, t)
-        char_real = real_characteristic(self.coefficients, self.path_dim, t)
+        coefficients = self.sample_coefficients()
+        char_fake = fake_characteristic(coefficients, t)
+        char_real = real_characteristic(coefficients, self.path_dim, t)
         D_loss = - 1 / self.batch_size * ((char_fake - char_real).real ** 2 + (char_fake - char_real).imag ** 2).sum()
-        return D_loss, self.coefficients
+        return D_loss, coefficients
 
 
 class Gaussian_Characteristic_Discriminator(Characteristic_Discriminator):
@@ -42,17 +47,24 @@ class Gaussian_Characteristic_Discriminator(Characteristic_Discriminator):
     def __init__(self, batch_size: int, path_dim: int, logsig_level: int = 2):
         super(Gaussian_Characteristic_Discriminator, self).__init__(batch_size, path_dim, logsig_level)
 
-        self.mean = nn.Parameter(torch.empty(1, self.logsig_length))
-        self.logvar = nn.Parameter(torch.empty(1, self.logsig_length))
-        nn.init.kaiming_normal_(self.logvar)
+        self.levy_mean = nn.Parameter(torch.empty(1, self.logsig_length - self.path_dim))
+        self.levy_logvar = nn.Parameter(torch.empty(1, self.logsig_length - self.path_dim))
+        nn.init.kaiming_normal_(self.levy_mean)
+        nn.init.kaiming_normal_(self.levy_logvar)
 
+    def sample_coefficients(self):
+        levy_coefficients = self.levy_mean + torch.pow(torch.exp(self.levy_logvar), 0.5) * torch.randn([self.batch_size, self.logsig_length - self.path_dim]).to(self.levy_logvar.device)
+        # Simulate the coefficients for BM, this distribution is not learnt by the model
+        bm_coefficients = torch.randn([self.batch_size, self.path_dim]).to(levy_coefficients.device)
+        coefficients = torch.cat([bm_coefficients, levy_coefficients], -1)
+        return coefficients
 
     def forward(self, fake_characteristic, real_characteristic, t=0.1):
-        coefficients = self.mean + torch.pow(torch.exp(self.logvar), 0.5) * torch.randn([self.batch_size, self.logsig_length]).to(self.logvar.device)
+        coefficients = self.sample_coefficients()
         char_fake = fake_characteristic(coefficients, t)
         char_real = real_characteristic(coefficients, self.path_dim, t)
         D_loss = - 1 / self.batch_size * ((char_fake - char_real).real ** 2 + (char_fake - char_real).imag ** 2).sum()
-        return D_loss, self.logvar
+        return D_loss, self.levy_mean, self.levy_logvar
 
 class Embedded_Characteristic_Discriminator(Characteristic_Discriminator):
     '''
@@ -62,9 +74,9 @@ class Embedded_Characteristic_Discriminator(Characteristic_Discriminator):
         super(Embedded_Characteristic_Discriminator, self).__init__(batch_size, path_dim, logsig_level)
 
         self.hidden_dim = hidden_dim
-        self.mean = nn.Parameter(torch.empty(1, self.logsig_length))
-        self.logvar = nn.Parameter(torch.empty(1, self.logsig_length))
-        nn.init.kaiming_normal_(self.logvar)
+        self.levy_mean = nn.Parameter(torch.empty(1, self.logsig_length - self.path_dim))
+        self.levy_logvar = nn.Parameter(torch.empty(1, self.logsig_length - self.path_dim))
+        nn.init.kaiming_normal_(self.levy_logvar)
 
         self.model = nn.Sequential(
             *self.block(self.logsig_length, self.hidden_dim, normalize=False, activation='sigmoid'),
@@ -82,9 +94,15 @@ class Embedded_Characteristic_Discriminator(Characteristic_Discriminator):
             layers.append(nn.Sigmoid())
         return layers
 
+    def sample_coefficients(self):
+        levy_coefficients = self.levy_mean + torch.pow(torch.exp(self.levy_logvar), 0.5) * torch.randn([self.batch_size, self.logsig_length - self.path_dim]).to(self.levy_logvar.device)
+        # Simulate the coefficients for BM, this distribution is not learnt by the model
+        bm_coefficients = torch.randn([self.batch_size, self.path_dim]).to(levy_coefficients.device)
+        coefficients = torch.cat([bm_coefficients, levy_coefficients], -1)
+        return coefficients
 
     def forward(self, fake_characteristic, real_characteristic, t=0.1):
-        coefficients = self.mean + torch.pow(torch.exp(self.logvar), 0.5) * torch.randn([self.batch_size, self.logsig_length]).to(self.logvar.device)
+        coefficients = self.sample_coefficients()
         coefficients = self.model(coefficients)
         char_fake = fake_characteristic(coefficients, t)
         char_real = real_characteristic(coefficients, self.path_dim, t)

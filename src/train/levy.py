@@ -34,6 +34,7 @@ class Levy_GAN_trainer(Base_trainer):
         
         self.D = D
         self.D_optimizer = D_optimizer
+        self.mc_size = config.mc_size
         self.D_steps_per_G_step = config.D_steps_per_G_step
         self.G_steps_per_D_step = config.G_steps_per_D_step
         self.config = config
@@ -98,10 +99,12 @@ class Levy_GAN_trainer(Base_trainer):
             # Generate fake data for discriminator training
             noise = torch.randn([self.batch_size, self.G.input_dim]).to(self.G.device)
             BM_increment = math.sqrt(self.T) * torch.randn([self.batch_size, self.G.path_dim, 1]).to(self.G.device)
+
+            # BM_increment = BM_increment.repeat_interleave(self.mc_size, dim = 0).reshape(self.batch_size, -1, self.G.path_dim)
             # To give the rotational invariance, we randomly simulate a rotational matrix under the Haar measure and apply it to the BM increment.
             # rotation_matrix = torch.from_numpy(special_ortho_group.rvs(self.G.path_dim)).to(device = BM_increment.device, dtype = torch.float)
             # BM_increment = rotation_matrix @ BM_increment
-            
+
             x_fake = self.G(BM_increment.squeeze(-1), noise)
             fake_characteristic = get_fake_characteristic(x_fake)
         D_loss = self.D_trainstep(fake_characteristic, real_characteristic)
@@ -125,7 +128,7 @@ class Levy_GAN_trainer(Base_trainer):
         # BM_increment = rotation_matrix @ BM_increment
         x_fake = self.G(BM_increment.squeeze(-1), noise)
         fake_characteristic = get_fake_characteristic(x_fake)
-        coefficients = self.D.mean + torch.pow(torch.exp(self.D.logvar), 0.5) * torch.randn([self.D.batch_size, self.D.logsig_length]).to(self.G.device) + 1e-5
+        coefficients = self.D.sample_coefficients()
         # coefficients = self.D.model(coefficients)
         char_fake = fake_characteristic(coefficients, self.T)
         char_real = real_characteristic(coefficients, self.G.path_dim, self.T)
