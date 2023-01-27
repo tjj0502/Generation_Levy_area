@@ -73,8 +73,8 @@ class Conditional_Logsig_Generator(nn.Module):
             self.logsig_length[i - 1] = signatory.logsignature_channels(self.path_dim, i)
 
         self.model = nn.Sequential(
-            *self.block(self.input_dim + self.path_dim, self.hidden_dim, normalize=False, activation='sigmoid'),
-            *self.block(self.hidden_dim, self.hidden_dim, activation='sigmoid'),
+            *self.block(self.input_dim + self.path_dim, self.hidden_dim, normalize=False, activation='relu'),
+            *self.block(self.hidden_dim, self.hidden_dim, activation='relu'),
             *self.block(self.hidden_dim, int(self.logsig_length[-1] - self.logsig_length[-2]), normalize=True, activation='none')
         )
 

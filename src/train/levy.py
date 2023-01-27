@@ -34,7 +34,6 @@ class Levy_GAN_trainer(Base_trainer):
         
         self.D = D
         self.D_optimizer = D_optimizer
-        self.mc_size = config.mc_size
         self.D_steps_per_G_step = config.D_steps_per_G_step
         self.G_steps_per_D_step = config.G_steps_per_D_step
         self.config = config
@@ -138,6 +137,8 @@ class Levy_GAN_trainer(Base_trainer):
         
         # print(G_loss)
         G_loss.backward()
+        total_norm = torch.nn.utils.clip_grad_norm_(self.G.parameters(), 10)
+        wandb.log({'total_norm': total_norm}, self.step)
         self.G_optimizer.step()
 
         if self.save_model and self.step != 0 and self.step % self.save_every == 0:
@@ -169,10 +170,22 @@ class Levy_GAN_trainer(Base_trainer):
             self.loss_tracker['best_G_loss'].append(self.best_G_loss)
             self.loss_tracker['evaluation_loss'].append(evaluation_loss)
             self.loss_tracker['G_loss'].append(G_loss)
+            self.loss_tracker['total_norm'].append(total_norm)
             
             # Track other qualities for debugging
-            self.loss_tracker['logvar'].append(self.D.logvar.clone())
-            # wandb.log({'logvar': self.D.logvar})
+            if self.config.discriminator == "gaussian_characteristic":
+                self.loss_tracker['logvar'].append(self.D.levy_logvar.clone())
+                self.loss_tracker['mean'].append(self.D.levy_mean.clone())
+            if self.config.discriminator == "iid_gaussian_characteristic":
+                self.loss_tracker['logvar'].append(self.D.levy_logvar.clone())
+                self.loss_tracker['mean'].append(self.D.levy_mean.clone())
+                wandb.log({'mean': self.D.levy_mean.item()})
+                wandb.log({'logvar': self.D.levy_logvar.item()})
+            if self.config.discriminator == "cauchy_characteristic":
+                self.loss_tracker['scale'].append(self.D.levy_scale.clone())
+                self.loss_tracker['location'].append(self.D.levy_mean.clone())
+                wandb.log({'scale': self.D.levy_scale.item()})
+                wandb.log({'location': self.D.levy_location.item()})
         
         toggle_grad(self.G, False)
 
@@ -188,6 +201,9 @@ class Levy_GAN_trainer(Base_trainer):
         # x_fake.requires_grad_()
         D_loss, _ = self.D(fake_characteristic, real_characteristic, self.T)
         D_loss.backward()
+        
+        print('logvar: ', self.D.levy_logvar)
+        print('logvar grad: ', self.D.levy_logvar.grad)
         self.D_optimizer.step()
         
         if self.save_model and self.step != 0 and self.step % self.save_every == 0:

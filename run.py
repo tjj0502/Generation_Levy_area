@@ -18,7 +18,7 @@ import seaborn as sns
 
 def run(algo_id, config, base_dir, dataset):
     print('Executing: %s, %s' % (algo_id, dataset))
-    experiment_directory = pt.join(base_dir, dataset, 'path_dim={}_lr_g={}_{}'.format(config.path_dim, config.lr_G, config.discriminator), 'seed={}'.format(config.seed), algo_id)
+    experiment_directory = pt.join(base_dir, dataset, 'path_dim={}_D_batch_size={}_{}'.format(config.path_dim, config.D_batch_size, config.discriminator), 'seed={}'.format(config.seed), algo_id)
 
     print(experiment_directory)
     config.update(
@@ -38,7 +38,7 @@ def run(algo_id, config, base_dir, dataset):
         project='Levy area',
         config=copy.deepcopy(dict(config)),
         entity="jiajie0502",
-        name="{}_lr={}".format(config.algo, config.lr_G),
+        name="Grid test on batch size {}".format(config.D_batch_size),
         tags=tags,
         group=dataset,
         # name=config.algo,
@@ -145,11 +145,11 @@ if __name__ == '__main__':
     key = int(torch.randint(1000,[1]))
     config.update({"key": key}, allow_val_change=True)
     
-    lr_g = [0.001]
-    for i in lr_g:
+    D_batch_size = [20, 50, 100, 200, 500]
+    for i in D_batch_size:
         key = int(torch.randint(1000,[1]))
         config.update({"key": key}, allow_val_change=True)
-        config.update({"lr_G": i}, allow_val_change=True)
-        save_path = "./result/brownian/lr_g={}".format(i)
-        config.update({"results_folder": save_path}, allow_val_change=True)
+        config.update({"D_batch_size": i}, allow_val_change=True)
+        # save_path = "./result/brownian/lr_g={}".format(i)
+        # config.update({"results_folder": save_path}, allow_val_change=True)
         main(config)

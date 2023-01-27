@@ -414,26 +414,28 @@ def plot_hists_marginals(x_real, x_fake):
 
 def histogram_plot(x_real, x_fake, config, grid_number = None, starting_point = 0, 
                    save_fig = True):
-    print("x_real: ", x_real.device, "x_fake: ", x_fake.device)
     logsig_dim = x_real.shape[-1]
-    print("logsig_dim: ", logsig_dim)
     if not grid_number:
         grid_number = int(math.sqrt(logsig_dim)) + 1
-    print("grid_number: ", grid_number)
     fig, ax = plt.subplots(grid_number,grid_number)
     fig.set_size_inches(10, 10)
+    logsig_length = torch.zeros(config.logsig_level)
+    for i in range(1, config.logsig_level+1):
+        logsig_length[i-1] = signatory.logsignature_channels(config.path_dim, i)
+    
     k = 0
-    print(k)
     # sns.set()
     for i in range(grid_number):
         for j in range(grid_number):
-            print(k)
             if k == logsig_dim:
                 break
             ax[i,j].hist((np.array(x_real[:,starting_point + k].cpu()), np.array(x_fake[:,starting_point + k].cpu()), ), bins=20, label = ('real', 'fake'))
             ax[i,j].legend()
-            ax[i,j].set_title(str('n = {}'.format(starting_point + grid_number*i+j)))
+            ax[i,j].set_title(str('n = {}'.format(starting_point + grid_number*i+j))+ ', degree ' + 
+                              str((logsig_length<(starting_point + grid_number*i+j+1)).count_nonzero().item() + 1))
             k+= 1
+            
+    plt.subplots_adjust(top = 0.99, bottom=0.01, hspace=0.3, wspace=0.4)
     # fig.show()
     if save_fig:
 #         fig.savefig(result_folder + '/histogram_{}.png'.format(starting_point))

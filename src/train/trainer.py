@@ -1,13 +1,15 @@
 from src.train.levy import Levy_GAN_trainer
 from src.model.generator.logsig_generator import Conditional_Logsig_Generator
-from src.model.discriminator.characteristic_discriminator import Grid_Characteristic_Discriminator, Gaussian_Characteristic_Discriminator, Embedded_Characteristic_Discriminator
+from src.model.discriminator.characteristic_discriminator import Grid_Characteristic_Discriminator, Gaussian_Characteristic_Discriminator, Embedded_Characteristic_Discriminator, IID_Gaussian_Characteristic_Discriminator, Cauchy_Characteristic_Discriminator
 import torch
 
 GENERATORS = {'brownian': Conditional_Logsig_Generator
               }
 
 DISCRIMINATOR = {'grid_characteristic': Grid_Characteristic_Discriminator,
+                 'cauchy_characteristic': Cauchy_Characteristic_Discriminator,
                  'gaussian_characteristic': Gaussian_Characteristic_Discriminator,
+                 'iid_gaussian_characteristic': IID_Gaussian_Characteristic_Discriminator,
                  'embedded_characteristic': Embedded_Characteristic_Discriminator
                  }
 
